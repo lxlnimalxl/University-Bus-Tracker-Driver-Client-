@@ -3,96 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>پنل راننده - نقشه فارسی</title>
+    <title>پنل راننده - نسخه مدرن</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
-        :root { --primary: #2c3e50; --bg-card: #ffffff; --shadow: 0 10px 30px rgba(0,0,0,0.15); }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Vazirmatn', sans-serif; background: #eee; overflow: hidden; }
-        
-        #map { width: 100%; height: 100vh; z-index: 1; background: #e6e6e6; }
+        /* --- متغیرهای رنگی مدرن --- */
+        :root {
+            --primary-color: #3b82f6; /* آبی مدرن */
+            --dark-bg: #1e293b;
+            --glass-bg: rgba(255, 255, 255, 0.92);
+            --shadow-soft: 0 10px 40px -10px rgba(0,0,0,0.15);
+            --border-radius: 24px;
+        }
 
-        /* نوار بالا */
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Vazirmatn', sans-serif; 
+            background: #f1f5f9; 
+            overflow: hidden; 
+        }
+        
+        #map { width: 100%; height: 100vh; z-index: 1; }
+
+        /* --- پنل بالا (هدر) --- */
         .top-bar {
-            position: fixed; top: 0; left: 0; right: 0;
-            background: linear-gradient(to left, #1e3c72, #2a5298);
-            color: white; padding: 15px 20px;
-            border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
-            z-index: 1000; box-shadow: var(--shadow);
+            position: fixed; 
+            top: 20px; left: 20px; right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            z-index: 1000;
+            box-shadow: var(--shadow-soft);
             display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid rgba(255,255,255,0.5);
+            animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .status-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; }
-        .status-dot { width: 8px; height: 8px; background: #ccc; border-radius: 50%; }
+        .app-title {
+            font-weight: 800;
+            font-size: 1rem;
+            color: #0f172a;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .app-title i { color: var(--primary-color); }
 
-        /* کارت پایین */
+        .status-badge { 
+            background: rgba(0,0,0,0.05); 
+            padding: 6px 12px; 
+            border-radius: 50px; 
+            font-size: 0.75rem; 
+            font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+            color: #64748b;
+            transition: all 0.3s ease;
+        }
+        .status-dot { width: 8px; height: 8px; background: #cbd5e1; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,1); }
+
+        /* --- پنل پایین (داشبورد) --- */
         .bottom-card {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: var(--bg-card); padding: 25px 25px 35px 25px;
-            border-top-left-radius: 30px; border-top-right-radius: 30px;
-            box-shadow: 0 -5px 40px rgba(0,0,0,0.1); z-index: 1000;
+            position: fixed; 
+            bottom: 25px; left: 20px; right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-soft);
+            z-index: 1000;
             display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid rgba(255,255,255,0.5);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
         }
         
-        .info-item h4 { margin: 0; color: #7f8c8d; font-size: 0.8rem; }
-        .info-item .val { font-size: 1.6rem; font-weight: 700; color: #2c3e50; }
-        .unit { font-size: 0.9rem; font-weight: 500; color: #95a5a6; }
+        .info-block { display: flex; flex-direction: column; gap: 4px; }
+        .label { color: #64748b; font-size: 0.75rem; font-weight: 500; }
+        
+        .value-wrapper { display: flex; align-items: baseline; gap: 4px; }
+        .val { font-size: 1.8rem; font-weight: 900; color: #0f172a; letter-spacing: -1px; line-height: 1; }
+        .unit { font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
 
-        /* دکمه مکان یابی */
+        /* جداکننده عمودی */
+        .divider { width: 1px; height: 40px; background: #e2e8f0; }
+
+        /* --- دکمه مکان یابی (FAB) --- */
         .fab-btn {
-            position: fixed; bottom: 140px; left: 25px;
-            width: 56px; height: 56px; background: #2c3e50; color: white;
-            border-radius: 18px; border: none; box-shadow: var(--shadow);
-            font-size: 1.2rem; cursor: pointer; z-index: 1000;
+            position: fixed; 
+            bottom: 140px; right: 25px; /* سمت راست برای دسترسی راحت‌تر */
+            width: 50px; height: 50px; 
+            background: white; 
+            color: #334155;
+            border-radius: 18px; 
+            border: none; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            font-size: 1.1rem; 
+            cursor: pointer; z-index: 1000;
             display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards;
         }
+        .fab-btn:active { transform: scale(0.9); }
+        .fab-btn i { transition: color 0.3s; }
+        .fab-btn:hover i { color: var(--primary-color); }
+
+        /* --- انیمیشن‌ها --- */
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* استایل اختصاصی برای حالت فعال/غیرفعال */
+        .status-badge.online { background: #dcfce7; color: #166534; }
+        .status-badge.online .status-dot { background: #22c55e; }
+        
+        .status-badge.offline { background: #fee2e2; color: #991b1b; }
+        .status-badge.offline .status-dot { background: #ef4444; }
+
     </style>
 </head>
 <body>
 
     <div class="top-bar">
-        <span>سرویس دانشگاه (فارسی)</span>
-        <div class="status-badge">
+        <div class="app-title">
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>سرویس دانشگاه</span>
+        </div>
+        <div class="status-badge" id="status-badge">
             <div id="gps-dot" class="status-dot"></div>
             <span id="gps-text">در حال اتصال...</span>
         </div>
     </div>
 
     <div id="map"></div>
-    <button class="fab-btn" onclick="centerMap()"><i class="fa-solid fa-location-arrow"></i></button>
+
+    <button class="fab-btn" onclick="centerMap()">
+        <i class="fa-solid fa-location-crosshairs"></i>
+    </button>
 
     <div class="bottom-card">
-        <div class="info-item">
-            <h4>سرعت</h4>
-            <div class="val"><span id="speed">0</span> <span class="unit">km/h</span></div>
+        <div class="info-block">
+            <span class="label">سرعت حرکت</span>
+            <div class="value-wrapper">
+                <span class="val" id="speed">۰</span>
+                <span class="unit">km/h</span>
+            </div>
         </div>
-        <div style="width:1px; height:40px; background:#eee;"></div>
-        <div class="info-item" style="text-align: left;">
-            <h4>دقت GPS</h4>
-            <div class="val" id="accuracy" style="font-size: 1.1rem; margin-top: 8px;">---</div>
+        
+        <div class="divider"></div>
+        
+        <div class="info-block" style="text-align: left;">
+            <span class="label">دقت سیگنال</span>
+            <div class="value-wrapper" style="justify-content: flex-end;">
+                <span class="val" id="accuracy">--</span>
+                <span class="unit">متر</span>
+            </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // ۱. تنظیمات نقشه
-        const map = L.map('map', {zoomControl: false}).setView([35.6997, 51.3380], 13);
+        // کنترل زوم را حذف کردم تا صفحه خلوت‌تر شود (با دو انگشت زوم کنید)
+        const map = L.map('map', {
+            zoomControl: false, 
+            attributionControl: false
+        }).setView([35.6997, 51.3380], 13);
 
-        // ۲. لایه گوگل مپ با اجبار زبان فارسی (&hl=fa)
-        // این لینک باعث می‌شود گوگل نام خیابان‌ها را فارسی بفرستد
+        // ۲. لایه گوگل مپ فارسی (همان کدی که تایید کردید)
         L.tileLayer('http://{s}.google.com/vt/lyrs=m&hl=fa&x={x}&y={y}&z={z}', {
             maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Google Maps Farsi'
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
 
         // ۳. آیکون اتوبوس
         const busIcon = L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [50, 50], iconAnchor: [25, 50]
+            iconSize: [55, 55], 
+            iconAnchor: [27, 55],
+            popupAnchor: [0, -50]
         });
 
         let marker = null;
@@ -129,25 +220,33 @@
             console.error(err);
         }
 
+        // تابع کمکی برای تبدیل اعداد انگلیسی به فارسی
+        function toFarsiNumber(n) {
+            const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return n.toString().replace(/\d/g, x => farsiDigits[x]);
+        }
+
         function updateUI(connected, speed, acc) {
-            const dot = document.getElementById('gps-dot');
+            const badge = document.getElementById('status-badge');
             const txt = document.getElementById('gps-text');
             const spdEl = document.getElementById('speed');
             const accEl = document.getElementById('accuracy');
 
             if(connected) {
-                dot.style.background = '#2ecc71'; dot.style.boxShadow = '0 0 8px #2ecc71';
-                txt.innerText = "آنلاین"; spdEl.innerText = speed;
-                accEl.innerText = acc + " متر"; accEl.style.color = "#27ae60";
+                badge.className = 'status-badge online';
+                txt.innerText = "متصل به ماهواره";
+                spdEl.innerText = toFarsiNumber(speed);
+                accEl.innerText = toFarsiNumber(acc);
             } else {
-                dot.style.background = '#e74c3c'; dot.style.boxShadow = 'none';
-                txt.innerText = "قطع"; accEl.innerText = "بدون سیگنال"; accEl.style.color = "#e74c3c";
+                badge.className = 'status-badge offline';
+                txt.innerText = "قطع ارتباط";
+                accEl.innerText = "--";
             }
         }
 
         function centerMap() {
-            if(marker) map.flyTo(marker.getLatLng(), 18);
-            else alert("مکان یابی نشده");
+            if(marker) map.flyTo(marker.getLatLng(), 18, { animate: true, duration: 1.2 });
+            else alert("هنوز موقعیتی دریافت نشده است");
         }
     </script>
 </body>

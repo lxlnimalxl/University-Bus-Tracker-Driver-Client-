@@ -3,299 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>پنل راننده دانشگاه</title>
+    <title>پنل راننده - دیزاین مدرن</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
-        /* تنظیمات پایه */
         :root {
-            --primary-color: #0056b3; /* آبی دانشگاهی */
-            --success-color: #2ecc71;
-            --warning-color: #f1c40f;
-            --error-color: #e74c3c;
-            --bg-glass: rgba(255, 255, 255, 0.85);
+            --primary: #2c3e50;      /* سرمه‌ای تیره */
+            --accent: #3498db;       /* آبی روشن */
+            --bg-card: #ffffff;      /* سفید */
+            --text-main: #2c3e50;
+            --text-sub: #95a5a6;
+            --shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
-        body, html {
-            margin: 0; padding: 0; height: 100%;
-            font-family: 'Vazirmatn', sans-serif;
-            background: #eee;
-            overflow: hidden; /* جلوگیری از اسکرول اضافه */
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Vazirmatn', sans-serif; 
+            background: #ecf0f1; 
+            overflow: hidden; 
         }
 
-        #map { width: 100%; height: 100vh; z-index: 1; }
-
-        /* --- المان‌های رابط کاربری (UI) --- */
-
-        /* نوار وضعیت بالای صفحه */
-        .top-status-bar {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            padding: 12px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.9rem;
-            z-index: 1001;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-        .status-searching { background: var(--warning-color); color: #333; }
-        .status-connected { background: var(--success-color); color: white; }
-        .status-error { background: var(--error-color); color: white; }
-
-        /* دکمه شناور مرکز‌دهی (Recenter Button) */
-        .recenter-btn {
-            position: fixed;
-            bottom: 130px; /* بالای پنل پایینی */
-            right: 20px;
-            width: 50px; height: 50px;
-            background: white;
-            color: var(--primary-color);
-            border: none;
-            border-radius: 50%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            font-size: 1.2rem;
-            cursor: pointer;
-            z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
-        }
-        .recenter-btn:active { transform: scale(0.95); }
-
-        /* پنل داشبورد راننده (پایین صفحه) */
-        .driver-dashboard {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            background: var(--bg-glass);
-            backdrop-filter: blur(10px); /* افکت شیشه‌ای */
-            border-top-left-radius: 25px;
-            border-top-right-radius: 25px;
-            padding: 20px 25px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.3s ease;
+        /* نقشه تمام صفحه */
+        #map { 
+            width: 100%; height: 100vh; 
+            z-index: 1; 
         }
 
-        .dashboard-main-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .status-icon-box {
-            width: 50px; height: 50px;
-            background: var(--primary-color);
+        /* نوار وضعیت بالا */
+        .top-bar {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: linear-gradient(to left, var(--primary), #34495e);
             color: white;
-            border-radius: 15px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem;
+            padding: 15px 20px;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        .status-text-box h3 { margin: 0; font-size: 1.1rem; color: #333; }
-        .status-text-box p { margin: 4px 0 0; font-size: 0.85rem; color: #666; }
-
-        .dashboard-stats {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            text-align: left;
-        }
-
-        .stat-item {
-            background: rgba(255,255,255,0.5);
-            padding: 5px 10px;
-            border-radius: 8px;
+        .status-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
             font-size: 0.8rem;
-            color: #555;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .stat-item i { color: var(--primary-color); }
-        .speed-value { font-weight: bold; color: var(--primary-color); font-size: 1rem; }
-
-        /* کاستوم کردن کنترل‌های نقشه */
-        .leaflet-control-zoom {
-            border: none !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
-            margin-top: 60px !important; /* فاصله از نوار بالا */
-        }
-        .leaflet-bar a {
-            color: var(--primary-color) !important;
-            border-radius: 8px !important;
-            border-bottom: 1px solid #eee !important;
+            display: flex; align-items: center; gap: 8px;
         }
 
-        /* انیمیشن پالس برای دایره دقت */
-        .pulse-ring {
-            animation: pulsate 2.5s infinite;
-        }
-        @keyframes pulsate {
-            0% { opacity: 0.5; transform: scale(0.8); }
-            100% { opacity: 0; transform: scale(1.8); }
+        .status-dot {
+            width: 8px; height: 8px; background: #e74c3c; /* قرمز پیش‌فرض */
+            border-radius: 50%;
         }
 
+        /* کارت اطلاعات پایین */
+        .bottom-card {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--bg-card);
+            padding: 25px 25px 35px 25px; /* پایین فضای بیشتر برای موبایل‌های جدید */
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+            box-shadow: 0 -5px 40px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: transform 0.3s ease;
+        }
+
+        .info-group h4 { margin: 0; color: var(--text-sub); font-size: 0.85rem; font-weight: 300; }
+        .info-group .value { margin: 5px 0 0; font-size: 1.6rem; font-weight: 700; color: var(--text-main); }
+        .unit { font-size: 0.9rem; font-weight: 500; color: var(--text-sub); }
+
+        /* دکمه موقعیت من (FAB) */
+        .fab-btn {
+            position: fixed; bottom: 140px; left: 25px;
+            width: 56px; height: 56px;
+            background: var(--primary);
+            color: white;
+            border-radius: 18px; /* کمی مربعی‌تر (Modern UI) */
+            border: none;
+            box-shadow: var(--shadow);
+            font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .fab-btn:active { transform: scale(0.95); background: #1a252f; }
+
+        /* لودینگ اولیه */
+        #loader {
+            position: fixed; inset: 0; background: white; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--primary);
+        }
     </style>
 </head>
 <body>
 
-    <div id="topBar" class="top-status-bar status-searching">
-        <i class="fa-solid fa-satellite-dish fa-spin"></i> در حال ارتباط با ماهواره GPS...
+    <div id="loader">
+        <i class="fa-solid fa-bus fa-3x fa-bounce"></i>
+        <p style="margin-top:20px;">در حال راه‌اندازی سامانه...</p>
+    </div>
+
+    <div class="top-bar">
+        <span style="font-weight: bold; font-size: 1.1rem;">سرویس دانشگاه</span>
+        <div class="status-badge">
+            <div id="gps-dot" class="status-dot"></div>
+            <span id="gps-text">در حال جستجو...</span>
+        </div>
     </div>
 
     <div id="map"></div>
 
-    <button class="recenter-btn" onclick="reCenterMap()">
-        <i class="fa-solid fa-location-crosshairs"></i>
+    <button class="fab-btn" onclick="centerMap()">
+        <i class="fa-solid fa-location-arrow"></i>
     </button>
 
-    <div class="driver-dashboard">
-        <div class="dashboard-main-info">
-            <div class="status-icon-box" id="dashIconBg">
-                <i class="fa-solid fa-bus" id="dashIcon"></i>
-            </div>
-            <div class="status-text-box">
-                <h3 id="dashTitle">سرویس دانشگاه</h3>
-                <p id="dashSub">منتظر دریافت موقعیت...</p>
-            </div>
+    <div class="bottom-card">
+        <div class="info-group">
+            <h4>سرعت لحظه‌ای</h4>
+            <div class="value"><span id="speed">0</span> <span class="unit">km/h</span></div>
         </div>
-        <div class="dashboard-stats">
-            <div class="stat-item">
-                <i class="fa-solid fa-gauge-high"></i>
-                <span id="speedStat">سرعت: <span class="speed-value">0</span> km/h</span>
-            </div>
-            <div class="stat-item">
-                <i class="fa-solid fa-circle-notch"></i>
-                <span id="accStat">دقت: محاسبه...</span>
-            </div>
+        
+        <div style="width: 1px; height: 40px; background: #eee;"></div>
+
+        <div class="info-group" style="text-align: left;">
+            <h4>وضعیت GPS</h4>
+            <div class="value" style="font-size: 1.2rem; margin-top: 10px;" id="accuracy">---</div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- تنظیمات نقشه ---
-        const map = L.map('map', { zoomControl: false }).setView([35.6892, 51.3890], 13);
-        L.control.zoom({ position: 'topleft' }).addTo(map);
+        // ۱. ساخت نقشه (بدون کنترل‌های زوم اضافه)
+        const map = L.map('map', {
+            zoomControl: false, // حذف دکمه‌های +/- برای زیبایی
+            attributionControl: false // حذف نوشته‌های پایین نقشه برای تمیزی
+        }).setView([35.6997, 51.3380], 13);
 
-        // استفاده از لایه Esri (پایدار و زیبا)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri', maxZoom: 19
+        // لایه نقشه ویکی‌مدیا (تمیز و بدون فیلتر)
+        L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png', {
+            minZoom: 5,
+            maxZoom: 19
         }).addTo(map);
 
+        // ۲. آیکون اتوبوس (سایز بزرگتر و واضح‌تر)
         const busIcon = L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [48, 48], iconAnchor: [24, 48], popupAnchor: [0, -45]
+            iconSize: [55, 55],
+            iconAnchor: [27, 55], // نوک پایین آیکون روی مکان باشد
         });
 
-        // --- متغیرهای گلوبال ---
-        let userMarker = null;
-        let accuracyCircle = null;
-        let isFirstFix = true;
+        let marker = null;
+        let isFirstLoad = true;
 
-        // --- منطق GPS ---
-        if (!navigator.geolocation) {
-            uiShowError("مرورگر شما از GPS پشتیبانی نمی‌کند.");
-        } else {
-            navigator.geolocation.watchPosition(onLocationFound, onLocationError, {
+        // ۳. شروع GPS
+        if('geolocation' in navigator) {
+            navigator.geolocation.watchPosition(success, error, {
                 enableHighAccuracy: true,
-                timeout: 20000,
+                timeout: 10000,
                 maximumAge: 0
             });
+        } else {
+            alert('مرورگر قدیمی است.');
         }
 
-        function onLocationFound(pos) {
+        function success(pos) {
+            // حذف لودینگ در اولین دریافت سیگنال
+            document.getElementById('loader').style.display = 'none';
+
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            const acc = pos.coords.accuracy;
-            // محاسبه سرعت (تبدیل m/s به km/h، اگر موجود نباشد 0)
-            const speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(0) : 0;
+            const speedVal = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(0) : 0;
+            const accVal = Math.round(pos.coords.accuracy);
 
-            // آپدیت رابط کاربری به حالت متصل
-            uiSetConnected(acc, speed);
+            // بروزرسانی UI
+            updateUI(true, speedVal, accVal);
 
-            // آپدیت مارکر روی نقشه
-            if (!userMarker) {
-                userMarker = L.marker([lat, lng], {icon: busIcon}).addTo(map)
-                    .bindPopup("<b>سرویس فعال است</b>").openPopup();
-                
-                // دایره دقت با انیمیشن پالس
-                accuracyCircle = L.circle([lat, lng], {
-                    radius: acc,
-                    color: 'var(--primary-color)',
-                    fillColor: 'var(--primary-color)',
-                    fillOpacity: 0.2,
-                    weight: 1,
-                    className: 'pulse-ring' // اضافه کردن کلاس انیمیشن
-                }).addTo(map);
+            // بروزرسانی مارکر (بدون هیچ دایره و پالس اضافه)
+            if (!marker) {
+                marker = L.marker([lat, lng], {icon: busIcon}).addTo(map);
             } else {
-                userMarker.setLatLng([lat, lng]);
-                accuracyCircle.setLatLng([lat, lng]);
-                accuracyCircle.setRadius(acc);
+                marker.setLatLng([lat, lng]);
             }
 
-            // فقط بار اول یا وقتی دکمه مرکز زده شده، نقشه را قفل کن
-            if (isFirstFix) {
-                map.flyTo([lat, lng], 17, { duration: 1.5 });
-                isFirstFix = false;
+            // فقط بار اول زوم کن روی راننده
+            if(isFirstLoad) {
+                map.setView([lat, lng], 17);
+                isFirstLoad = false;
             }
         }
 
-        function onLocationError(err) {
-            let msg = "خطای ناشناخته GPS";
-            if (err.code === 1) msg = "دسترسی GPS رد شد (مجوز دهید)";
-            if (err.code === 2) msg = "سیگنال GPS یافت نشد";
-            if (err.code === 3) msg = "زمان اتصال تمام شد (تایم‌اوت)";
-            uiShowError(msg);
+        function error(err) {
+            document.getElementById('loader').style.display = 'none'; // حتی اگر ارور داد لودینگ برود
+            updateUI(false);
+            console.error(err);
         }
 
-        // --- توابع مدیریت UI ---
+        // تابع مدیریت ظاهر (رنگ چراغ‌ها و متن‌ها)
+        function updateUI(isConnected, speed = 0, accuracy = 0) {
+            const dot = document.getElementById('gps-dot');
+            const text = document.getElementById('gps-text');
+            const speedEl = document.getElementById('speed');
+            const accEl = document.getElementById('accuracy');
 
-        function uiSetConnected(accuracy, speed) {
-            // نوار بالا
-            const topBar = document.getElementById('topBar');
-            topBar.className = 'top-status-bar status-connected';
-            topBar.innerHTML = '<i class="fa-solid fa-check-circle"></i> متصل به ماهواره GPS';
-
-            // داشبورد پایین
-            document.getElementById('dashIconBg').style.background = 'var(--success-color)';
-            document.getElementById('dashIcon').className = 'fa-solid fa-bus';
-            document.getElementById('dashTitle').innerText = "سرویس فعال";
-            document.getElementById('dashSub').innerText = "در حال ارسال موقعیت...";
-            
-            document.getElementById('accStat').innerText = `دقت: ${Math.round(accuracy)} متر`;
-            document.querySelector('.speed-value').innerText = speed;
-        }
-
-        function uiShowError(message) {
-            // نوار بالا
-            const topBar = document.getElementById('topBar');
-            topBar.className = 'top-status-bar status-error';
-            topBar.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${message}`;
-
-            // داشبورد پایین
-            document.getElementById('dashIconBg').style.background = 'var(--error-color)';
-            document.getElementById('dashIcon').className = 'fa-solid fa-ban';
-            document.getElementById('dashTitle').innerText = "خطا در ردیابی";
-            document.getElementById('dashSub').innerText = "اتصال قطع است";
-            
-             document.querySelector('.speed-value').innerText = "0";
-             document.getElementById('accStat').innerText = "---";
-        }
-
-        // تابع دکمه بازگشت به مرکز
-        function reCenterMap() {
-            if(userMarker) {
-                map.flyTo(userMarker.getLatLng(), 18);
-                isFirstFix = true; // دوباره حالت فالو کردن فعال شود
+            if (isConnected) {
+                dot.style.background = '#2ecc71'; // سبز
+                dot.style.boxShadow = '0 0 10px #2ecc71'; // درخشش ریز ثابت
+                text.innerText = "آنلاین";
+                speedEl.innerText = speed;
+                accEl.innerText = "دقیق (" + accuracy + "m)";
+                accEl.style.color = "#27ae60";
             } else {
-                alert("هنوز موقعیتی دریافت نشده است.");
+                dot.style.background = '#e74c3c'; // قرمز
+                dot.style.boxShadow = 'none';
+                text.innerText = "قطع ارتباط";
+                accEl.innerText = "عدم سیگنال";
+                accEl.style.color = "#e74c3c";
+            }
+        }
+
+        // دکمه بازگشت به مرکز
+        function centerMap() {
+            if(marker) {
+                map.flyTo(marker.getLatLng(), 18, {
+                    animate: true,
+                    duration: 1
+                });
+            } else {
+                alert("هنوز موقعیت شما پیدا نشده است.");
             }
         }
     </script>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>رهگیری اتوبوس - نسخه پایدار</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; background: #eee; }
+        
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* استایل پیام خطا */
+        #error-box {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            z-index: 9999;
+            display: none; /* پیش‌فرض مخفی */
+            font-size: 0.9rem;
+        }
+
+        /* دکمه شناور پایین */
+        .float-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #ccc;
+            border-radius: 50%;
+        }
+        .status-ok { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+        .status-err { background: #e74c3c; }
+
+    </style>
+</head>
+<body>
+
+    <div id="error-box"></div>
+
+    <div id="map"></div>
+
+    <div class="float-panel">
+        <div id="gps-dot" class="status-dot"></div>
+        <span id="gps-text">در حال یافتن ماهواره...</span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <script>
+        // ۱. تنظیم نقشه با سرور Esri (بسیار سریع و پایدار)
+        // مختصات پیش‌فرض (تهران) - اگر GPS کار نکند اینجا را نشان می‌دهد
+        const map = L.map('map').setView([35.6892, 51.3890], 12);
+
+        // استفاده از تایل‌های Esri World Street Map به جای OpenStreetMap
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19
+        }).addTo(map);
+
+        // ۲. آیکون اتوبوس
+        const busIcon = L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
+            iconSize: [45, 45],
+            iconAnchor: [22, 45],
+            popupAnchor: [0, -40]
+        });
+
+        let marker = null;
+        let circle = null;
+
+        // ۳. بررسی پشتیبانی مرورگر
+        if (!navigator.geolocation) {
+            showError("مرورگر شما از GPS پشتیبانی نمی‌کند.");
+        } else {
+            // شروع دریافت موقعیت
+            navigator.geolocation.watchPosition(updatePosition, handleError, {
+                enableHighAccuracy: true, // تلاش برای دقت بالا
+                timeout: 20000,           // ۲۰ ثانیه صبر کن
+                maximumAge: 0             // لوکیشن قدیمی نده
+            });
+        }
+
+        // تابع موفقیت
+        function updatePosition(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const acc = position.coords.accuracy;
+
+            // مخفی کردن ارورها
+            document.getElementById('error-box').style.display = 'none';
+            document.getElementById('gps-text').innerText = `متصل (دقت: ${Math.round(acc)} متر)`;
+            document.getElementById('gps-dot').className = 'status-dot status-ok';
+
+            if (!marker) {
+                // ساخت مارکر برای بار اول
+                marker = L.marker([lat, lng], {icon: busIcon}).addTo(map)
+                    .bindPopup("اتوبوس اینجاست").openPopup();
+                circle = L.circle([lat, lng], {radius: acc}).addTo(map);
+                map.setView([lat, lng], 16); // زوم روی کاربر
+            } else {
+                // آپدیت مکان
+                marker.setLatLng([lat, lng]);
+                circle.setLatLng([lat, lng]);
+                circle.setRadius(acc);
+                map.panTo([lat, lng]); // نرم حرکت کن
+            }
+        }
+
+        // تابع مدیریت خطا (بسیار مهم برای فهمیدن مشکل)
+        function handleError(error) {
+            let msg = "";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    msg = "⛔ دسترسی به GPS رد شد. لطفا Location گوشی را روشن کنید و به مرورگر اجازه دهید.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    msg = "⚠️ موقعیت مکانی در دسترس نیست (GPS خاموش است یا سیگنال نیست).";
+                    break;
+                case error.TIMEOUT:
+                    msg = "⏰ زمان اتصال تمام شد. اینترنت یا GPS ضعیف است.";
+                    break;
+                default:
+                    msg = "❌ خطای ناشناخته در GPS.";
+            }
+            showError(msg);
+            
+            document.getElementById('gps-text').innerText = "عدم دریافت سیگنال";
+            document.getElementById('gps-dot').className = 'status-dot status-err';
+        }
+
+        function showError(text) {
+            const box = document.getElementById('error-box');
+            box.style.display = 'block';
+            box.innerText = text;
+            
+            // اگر ارور مربوط به HTTPS باشد، تشخیص می‌دهیم
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                box.innerHTML += "<br><b>نکته مهم:</b> برای کارکردن GPS باید حتما از <b>HTTPS</b> استفاده کنید.";
+            }
+        }
+    </script>
+</body>
+</html>

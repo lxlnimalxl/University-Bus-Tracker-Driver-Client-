@@ -2,178 +2,246 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پنل راننده - ردیاب GPS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>پنل راننده - نسخه زیبا</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRS9BMY="
-     crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRS9BMY=" crossorigin=""/>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Tahoma', sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
         
-        #map { width: 100%; height: 100vh; z-index: 1; }
+        #map { width: 100%; height: 100vh; z-index: 1; background: #f0f0f0; }
 
-        .control-panel {
+        /* پنل وضعیت شیشه‌ای (Glassmorphism) */
+        .status-card {
             position: fixed;
             bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 15px 25px;
-            border-radius: 50px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            left: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             display: flex;
             align-items: center;
-            gap: 10px;
-            width: 80%;
-            max-width: 400px;
             justify-content: space-between;
+            max-width: 500px;
+            margin: 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
         }
 
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            background-color: #bdc3c7; /* خاکستری پیش‌فرض */
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .icon-box {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .text-box h3 { margin: 0; font-size: 1rem; color: #2c3e50; }
+        .text-box p { margin: 3px 0 0; font-size: 0.8rem; color: #7f8c8d; }
+
+        /* دکمه پیدا کردن من */
+        .locate-btn {
+            position: fixed;
+            bottom: 110px; /* بالای کارت وضعیت */
+            right: 25px;
+            width: 50px;
+            height: 50px;
+            background: white;
             border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-active { background-color: #2ecc71; } /* سبز برای فعال */
-        .status-error { background-color: #e74c3c; } /* قرمز برای خطا */
-
-        #status-msg {
-            font-size: 0.9rem;
-            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border: none;
+            cursor: pointer;
             color: #333;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
         }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        .locate-btn:active { transform: scale(0.95); }
+        .locate-btn.active { color: #3498db; }
+
+        /* انیمیشن پالس برای دایره دقت */
+        .gps-pulse {
+            animation: pulsate 2s infinite;
         }
+
+        @keyframes pulsate {
+            0% { opacity: 0.4; transform: scale(0.5); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+
+        /* کاستوم کردن کنترل‌های نقشه */
+        .leaflet-control-zoom { border: none !important; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
+        .leaflet-bar a { border-radius: 8px !important; margin-bottom: 5px !important; border: none !important; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
-    <div class="control-panel">
-        <div id="status-indicator" class="status-dot"></div>
-        <span id="status-msg">در انتظار دریافت مجوز GPS...</span>
+    <button class="locate-btn" onclick="reCenterMap()">
+        <i class="fa-solid fa-crosshairs"></i>
+    </button>
+
+    <div class="status-card" id="status-card">
+        <div class="status-info">
+            <div class="icon-box" id="status-icon">
+                <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <div class="text-box">
+                <h3 id="status-title">در حال جستجو...</h3>
+                <p id="status-desc">منتظر سیگنال GPS</p>
+            </div>
+        </div>
+        <div style="text-align: left;">
+            <small id="speed-text" style="color:#e67e22; font-weight:bold;">0 km/h</small>
+        </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // ۱. راه‌اندازی نقشه
-        // ابتدا نقشه را روی مرکز ایران یا شهر دانشگاه تنظیم می‌کنیم
-        const map = L.map('map').setView([32.4279, 53.6880], 5); 
+        // ۱. تنظیمات نقشه با لایه سریع‌تر CartoDB
+        const map = L.map('map', {
+            zoomControl: false // کنترل زوم را خودمان جاگذاری میکنیم یا حذف میکنیم برای زیبایی
+        }).setView([35.6892, 51.3890], 13); // پیش‌فرض تهران
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
+        // اضافه کردن کنترل زوم در بالا سمت چپ
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
+        // استفاده از لایه CartoDB Voyager (سریع‌تر و زیباتر از OSM استاندارد)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
         }).addTo(map);
 
-        // ۲. آیکون اتوبوس
+        // ۲. آیکون‌ها
         const busIcon = L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20],
-            popupAnchor: [0, -20]
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/5068/5068757.png', // آیکون سه‌بعدی‌تر
+            iconSize: [48, 48],
+            iconAnchor: [24, 40],
+            popupAnchor: [0, -40]
         });
 
-        // متغیرهای ذخیره وضعیت
-        let busMarker = null;
+        // متغیرها
+        let userMarker = null;
         let accuracyCircle = null;
-        let pathLine = L.polyline([], {color: 'red'}).addTo(map); // خط قرمز برای رسم مسیر طی شده
+        let pathLine = L.polyline([], {color: '#3498db', weight: 5, opacity: 0.7, lineCap: 'round'}).addTo(map);
+        let firstFix = true;
 
-        // ۳. تنظیمات GPS
-        const geoOptions = {
-            enableHighAccuracy: true, // درخواست دقیق‌ترین حالت ممکن (استفاده از GPS واقعی)
-            maximumAge: 0,            // عدم استفاده از مکان کش شده
-            timeout: 10000            // تایم‌اوت ۱۰ ثانیه
+        // ۳. تنظیمات GPS برای دقت حداکثری
+        const gpsOptions = {
+            enableHighAccuracy: true, // اجبار به استفاده از سخت‌افزار GPS
+            timeout: 15000,           // زمان انتظار بیشتر برای دریافت سیگنال دقیق
+            maximumAge: 0             // عدم استفاده از کش قدیمی
         };
 
-        // ۴. تابع شروع ردیابی
+        // ۴. تابع استارت
         function startTracking() {
             if (!navigator.geolocation) {
-                updateStatus("مرورگر شما از GPS پشتیبانی نمی‌کند.", "error");
+                updateUI("خطا", "GPS پشتیبانی نمی‌شود", "red");
                 return;
             }
-
-            updateStatus("در حال دریافت موقعیت مکانی...", "normal");
-
-            // استفاده از watchPosition به جای getCurrentPosition
-            // این تابع هر بار که مکان تغییر کند، اجرا می‌شود
-            navigator.geolocation.watchPosition(successPosition, errorPosition, geoOptions);
+            // واچ پوزیشن برای دریافت مداوم
+            navigator.geolocation.watchPosition(onSuccess, onError, gpsOptions);
         }
 
-        // ۵. کال‌بک موفقیت (مکان پیدا شد)
-        function successPosition(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const accuracy = position.coords.accuracy; // دقت به متر
+        // ۵. وقتی مختصات دریافت شد
+        function onSuccess(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const accuracy = pos.coords.accuracy;
+            const speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : 0; // تبدیل m/s به km/h
 
-            updateStatus(`موقعیت دریافت شد (دقت: ${Math.round(accuracy)} متر)`, "active");
+            // بروزرسانی UI
+            updateUI("متصل", `دقت سیگنال: ${Math.round(accuracy)} متر`, "#2ecc71");
+            document.getElementById('speed-text').innerText = `${speed} km/h`;
+            document.querySelector('.locate-btn').classList.add('active');
 
-            // اگر بار اول است که مارکر ساخته می‌شود
-            if (!busMarker) {
-                busMarker = L.marker([lat, lng], {icon: busIcon}).addTo(map);
-                accuracyCircle = L.circle([lat, lng], {radius: accuracy}).addTo(map);
-                map.setView([lat, lng], 16); // زوم روی اتوبوس
+            // ساخت یا آپدیت مارکر
+            if (!userMarker) {
+                userMarker = L.marker([lat, lng], {icon: busIcon}).addTo(map)
+                    .bindPopup("موقعیت کنونی سرویس").openPopup();
+                
+                accuracyCircle = L.circle([lat, lng], {
+                    radius: accuracy,
+                    color: '#3498db',
+                    fillColor: '#3498db',
+                    fillOpacity: 0.15,
+                    weight: 1
+                }).addTo(map);
             } else {
-                // آپدیت مکان مارکر و دایره دقت
-                busMarker.setLatLng([lat, lng]);
+                userMarker.setLatLng([lat, lng]);
                 accuracyCircle.setLatLng([lat, lng]);
                 accuracyCircle.setRadius(accuracy);
-                
-                // نقشه را نرم حرکت بده به سمت اتوبوس
-                map.panTo([lat, lng]);
             }
 
-            // رسم خط مسیر پشت سر اتوبوس
+            // رسم خط مسیر
             pathLine.addLatLng([lat, lng]);
-        }
 
-        // ۶. کال‌بک خطا (مشکل در GPS)
-        function errorPosition(err) {
-            let message = "";
-            switch(err.code) {
-                case err.PERMISSION_DENIED:
-                    message = "کاربر اجازه دسترسی به GPS را نداد.";
-                    break;
-                case err.POSITION_UNAVAILABLE:
-                    message = "مکان‌یابی امکان‌پذیر نیست (GPS خاموش است؟).";
-                    break;
-                case err.TIMEOUT:
-                    message = "زمان درخواست تمام شد.";
-                    break;
-                default:
-                    message = "خطای ناشناخته رخ داد.";
+            // فقط بار اول نقشه را روی اتوبوس قفل کن، بعدش اجازه بده کاربر نقشه را تکان دهد
+            if (firstFix) {
+                map.flyTo([lat, lng], 17, {animate: true, duration: 1.5});
+                firstFix = false;
             }
-            updateStatus(message, "error");
-            console.warn(`ERROR(${err.code}): ${err.message}`);
         }
 
-        // تابع کمکی برای آپدیت متن وضعیت
-        function updateStatus(text, type) {
-            const msgEl = document.getElementById('status-msg');
-            const dotEl = document.getElementById('status-indicator');
+        // ۶. مدیریت خطاها
+        function onError(err) {
+            console.warn('GPS Error:', err);
+            let msg = "خطای ناشناخته";
+            if (err.code === 1) msg = "دسترسی GPS رد شد";
+            if (err.code === 2) msg = "سیگنال GPS ضعیف است";
+            if (err.code === 3) msg = "تایم‌اوت دریافت موقعیت";
             
-            msgEl.innerText = text;
-            
-            dotEl.classList.remove('status-active', 'status-error');
-            if (type === 'active') dotEl.classList.add('status-active');
-            if (type === 'error') dotEl.classList.add('status-error');
+            updateUI("خطا", msg, "#e74c3c");
+            document.querySelector('.locate-btn').classList.remove('active');
         }
 
-        // شروع خودکار بعد از لود شدن صفحه
-        // نکته: در برخی مرورگرها ممکن است نیاز باشد کاربر دکمه‌ای را بزند، اما معمولا برای GPS دیالوگ باز می‌شود.
+        // ۷. توابع کمکی UI
+        function updateUI(title, desc, color) {
+            document.getElementById('status-title').innerText = title;
+            document.getElementById('status-desc').innerText = desc;
+            const iconBox = document.getElementById('status-icon');
+            iconBox.style.backgroundColor = color;
+            
+            // تغییر آیکون بر اساس وضعیت
+            if(title === "خطا") iconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            else iconBox.innerHTML = '<i class="fa-solid fa-bus"></i>';
+        }
+
+        // دکمه بازگشت به وسط (اگر کاربر نقشه را گم کرد)
+        function reCenterMap() {
+            if (userMarker) {
+                map.flyTo(userMarker.getLatLng(), 18);
+                firstFix = true; // دوباره مد فالو کردن فعال شود
+            } else {
+                alert("هنوز موقعیت مکانی دریافت نشده است.");
+            }
+        }
+
+        // شروع برنامه
         startTracking();
 
     </script>

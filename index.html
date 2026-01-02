@@ -3,160 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>رهگیری اتوبوس - نسخه پایدار</title>
+    <title>پنل راننده دانشگاه</title>
 
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; background: #eee; }
-        
-        #map { width: 100%; height: 100%; z-index: 1; }
-
-        /* استایل پیام خطا */
-        #error-box {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            background: #e74c3c;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            z-index: 9999;
-            display: none; /* پیش‌فرض مخفی */
-            font-size: 0.9rem;
+        /* تنظیمات پایه */
+        :root {
+            --primary-color: #0056b3; /* آبی دانشگاهی */
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --error-color: #e74c3c;
+            --bg-glass: rgba(255, 255, 255, 0.85);
         }
 
-        /* دکمه شناور پایین */
-        .float-panel {
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Vazirmatn', sans-serif;
+            background: #eee;
+            overflow: hidden; /* جلوگیری از اسکرول اضافه */
+        }
+
+        #map { width: 100%; height: 100vh; z-index: 1; }
+
+        /* --- المان‌های رابط کاربری (UI) --- */
+
+        /* نوار وضعیت بالای صفحه */
+        .top-status-bar {
             position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 0; left: 0; right: 0;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            z-index: 1001;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .status-searching { background: var(--warning-color); color: #333; }
+        .status-connected { background: var(--success-color); color: white; }
+        .status-error { background: var(--error-color); color: white; }
+
+        /* دکمه شناور مرکز‌دهی (Recenter Button) */
+        .recenter-btn {
+            position: fixed;
+            bottom: 130px; /* بالای پنل پایینی */
+            right: 20px;
+            width: 50px; height: 50px;
             background: white;
-            padding: 10px 20px;
-            border-radius: 50px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            color: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .recenter-btn:active { transform: scale(0.95); }
+
+        /* پنل داشبورد راننده (پایین صفحه) */
+        .driver-dashboard {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px); /* افکت شیشه‌ای */
+            border-top-left-radius: 25px;
+            border-top-right-radius: 25px;
+            padding: 20px 25px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
             z-index: 1000;
             display: flex;
             align-items: center;
-            gap: 10px;
-            white-space: nowrap;
+            justify-content: space-between;
+            transition: all 0.3s ease;
         }
 
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            background: #ccc;
-            border-radius: 50%;
+        .dashboard-main-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
-        .status-ok { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
-        .status-err { background: #e74c3c; }
+
+        .status-icon-box {
+            width: 50px; height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 15px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .status-text-box h3 { margin: 0; font-size: 1.1rem; color: #333; }
+        .status-text-box p { margin: 4px 0 0; font-size: 0.85rem; color: #666; }
+
+        .dashboard-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            text-align: left;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.5);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stat-item i { color: var(--primary-color); }
+        .speed-value { font-weight: bold; color: var(--primary-color); font-size: 1rem; }
+
+        /* کاستوم کردن کنترل‌های نقشه */
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+            margin-top: 60px !important; /* فاصله از نوار بالا */
+        }
+        .leaflet-bar a {
+            color: var(--primary-color) !important;
+            border-radius: 8px !important;
+            border-bottom: 1px solid #eee !important;
+        }
+
+        /* انیمیشن پالس برای دایره دقت */
+        .pulse-ring {
+            animation: pulsate 2.5s infinite;
+        }
+        @keyframes pulsate {
+            0% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 0; transform: scale(1.8); }
+        }
 
     </style>
 </head>
 <body>
 
-    <div id="error-box"></div>
+    <div id="topBar" class="top-status-bar status-searching">
+        <i class="fa-solid fa-satellite-dish fa-spin"></i> در حال ارتباط با ماهواره GPS...
+    </div>
 
     <div id="map"></div>
 
-    <div class="float-panel">
-        <div id="gps-dot" class="status-dot"></div>
-        <span id="gps-text">در حال یافتن ماهواره...</span>
+    <button class="recenter-btn" onclick="reCenterMap()">
+        <i class="fa-solid fa-location-crosshairs"></i>
+    </button>
+
+    <div class="driver-dashboard">
+        <div class="dashboard-main-info">
+            <div class="status-icon-box" id="dashIconBg">
+                <i class="fa-solid fa-bus" id="dashIcon"></i>
+            </div>
+            <div class="status-text-box">
+                <h3 id="dashTitle">سرویس دانشگاه</h3>
+                <p id="dashSub">منتظر دریافت موقعیت...</p>
+            </div>
+        </div>
+        <div class="dashboard-stats">
+            <div class="stat-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span id="speedStat">سرعت: <span class="speed-value">0</span> km/h</span>
+            </div>
+            <div class="stat-item">
+                <i class="fa-solid fa-circle-notch"></i>
+                <span id="accStat">دقت: محاسبه...</span>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
     <script>
-        // ۱. تنظیم نقشه با سرور Esri (بسیار سریع و پایدار)
-        // مختصات پیش‌فرض (تهران) - اگر GPS کار نکند اینجا را نشان می‌دهد
-        const map = L.map('map').setView([35.6892, 51.3890], 12);
+        // --- تنظیمات نقشه ---
+        const map = L.map('map', { zoomControl: false }).setView([35.6892, 51.3890], 13);
+        L.control.zoom({ position: 'topleft' }).addTo(map);
 
-        // استفاده از تایل‌های Esri World Street Map به جای OpenStreetMap
+        // استفاده از لایه Esri (پایدار و زیبا)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 19
+            attribution: 'Esri', maxZoom: 19
         }).addTo(map);
 
-        // ۲. آیکون اتوبوس
         const busIcon = L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [45, 45],
-            iconAnchor: [22, 45],
-            popupAnchor: [0, -40]
+            iconSize: [48, 48], iconAnchor: [24, 48], popupAnchor: [0, -45]
         });
 
-        let marker = null;
-        let circle = null;
+        // --- متغیرهای گلوبال ---
+        let userMarker = null;
+        let accuracyCircle = null;
+        let isFirstFix = true;
 
-        // ۳. بررسی پشتیبانی مرورگر
+        // --- منطق GPS ---
         if (!navigator.geolocation) {
-            showError("مرورگر شما از GPS پشتیبانی نمی‌کند.");
+            uiShowError("مرورگر شما از GPS پشتیبانی نمی‌کند.");
         } else {
-            // شروع دریافت موقعیت
-            navigator.geolocation.watchPosition(updatePosition, handleError, {
-                enableHighAccuracy: true, // تلاش برای دقت بالا
-                timeout: 20000,           // ۲۰ ثانیه صبر کن
-                maximumAge: 0             // لوکیشن قدیمی نده
+            navigator.geolocation.watchPosition(onLocationFound, onLocationError, {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
             });
         }
 
-        // تابع موفقیت
-        function updatePosition(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            const acc = position.coords.accuracy;
+        function onLocationFound(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+            // محاسبه سرعت (تبدیل m/s به km/h، اگر موجود نباشد 0)
+            const speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(0) : 0;
 
-            // مخفی کردن ارورها
-            document.getElementById('error-box').style.display = 'none';
-            document.getElementById('gps-text').innerText = `متصل (دقت: ${Math.round(acc)} متر)`;
-            document.getElementById('gps-dot').className = 'status-dot status-ok';
+            // آپدیت رابط کاربری به حالت متصل
+            uiSetConnected(acc, speed);
 
-            if (!marker) {
-                // ساخت مارکر برای بار اول
-                marker = L.marker([lat, lng], {icon: busIcon}).addTo(map)
-                    .bindPopup("اتوبوس اینجاست").openPopup();
-                circle = L.circle([lat, lng], {radius: acc}).addTo(map);
-                map.setView([lat, lng], 16); // زوم روی کاربر
+            // آپدیت مارکر روی نقشه
+            if (!userMarker) {
+                userMarker = L.marker([lat, lng], {icon: busIcon}).addTo(map)
+                    .bindPopup("<b>سرویس فعال است</b>").openPopup();
+                
+                // دایره دقت با انیمیشن پالس
+                accuracyCircle = L.circle([lat, lng], {
+                    radius: acc,
+                    color: 'var(--primary-color)',
+                    fillColor: 'var(--primary-color)',
+                    fillOpacity: 0.2,
+                    weight: 1,
+                    className: 'pulse-ring' // اضافه کردن کلاس انیمیشن
+                }).addTo(map);
             } else {
-                // آپدیت مکان
-                marker.setLatLng([lat, lng]);
-                circle.setLatLng([lat, lng]);
-                circle.setRadius(acc);
-                map.panTo([lat, lng]); // نرم حرکت کن
+                userMarker.setLatLng([lat, lng]);
+                accuracyCircle.setLatLng([lat, lng]);
+                accuracyCircle.setRadius(acc);
+            }
+
+            // فقط بار اول یا وقتی دکمه مرکز زده شده، نقشه را قفل کن
+            if (isFirstFix) {
+                map.flyTo([lat, lng], 17, { duration: 1.5 });
+                isFirstFix = false;
             }
         }
 
-        // تابع مدیریت خطا (بسیار مهم برای فهمیدن مشکل)
-        function handleError(error) {
-            let msg = "";
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    msg = "⛔ دسترسی به GPS رد شد. لطفا Location گوشی را روشن کنید و به مرورگر اجازه دهید.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    msg = "⚠️ موقعیت مکانی در دسترس نیست (GPS خاموش است یا سیگنال نیست).";
-                    break;
-                case error.TIMEOUT:
-                    msg = "⏰ زمان اتصال تمام شد. اینترنت یا GPS ضعیف است.";
-                    break;
-                default:
-                    msg = "❌ خطای ناشناخته در GPS.";
-            }
-            showError(msg);
-            
-            document.getElementById('gps-text').innerText = "عدم دریافت سیگنال";
-            document.getElementById('gps-dot').className = 'status-dot status-err';
+        function onLocationError(err) {
+            let msg = "خطای ناشناخته GPS";
+            if (err.code === 1) msg = "دسترسی GPS رد شد (مجوز دهید)";
+            if (err.code === 2) msg = "سیگنال GPS یافت نشد";
+            if (err.code === 3) msg = "زمان اتصال تمام شد (تایم‌اوت)";
+            uiShowError(msg);
         }
 
-        function showError(text) {
-            const box = document.getElementById('error-box');
-            box.style.display = 'block';
-            box.innerText = text;
+        // --- توابع مدیریت UI ---
+
+        function uiSetConnected(accuracy, speed) {
+            // نوار بالا
+            const topBar = document.getElementById('topBar');
+            topBar.className = 'top-status-bar status-connected';
+            topBar.innerHTML = '<i class="fa-solid fa-check-circle"></i> متصل به ماهواره GPS';
+
+            // داشبورد پایین
+            document.getElementById('dashIconBg').style.background = 'var(--success-color)';
+            document.getElementById('dashIcon').className = 'fa-solid fa-bus';
+            document.getElementById('dashTitle').innerText = "سرویس فعال";
+            document.getElementById('dashSub').innerText = "در حال ارسال موقعیت...";
             
-            // اگر ارور مربوط به HTTPS باشد، تشخیص می‌دهیم
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                box.innerHTML += "<br><b>نکته مهم:</b> برای کارکردن GPS باید حتما از <b>HTTPS</b> استفاده کنید.";
+            document.getElementById('accStat').innerText = `دقت: ${Math.round(accuracy)} متر`;
+            document.querySelector('.speed-value').innerText = speed;
+        }
+
+        function uiShowError(message) {
+            // نوار بالا
+            const topBar = document.getElementById('topBar');
+            topBar.className = 'top-status-bar status-error';
+            topBar.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${message}`;
+
+            // داشبورد پایین
+            document.getElementById('dashIconBg').style.background = 'var(--error-color)';
+            document.getElementById('dashIcon').className = 'fa-solid fa-ban';
+            document.getElementById('dashTitle').innerText = "خطا در ردیابی";
+            document.getElementById('dashSub').innerText = "اتصال قطع است";
+            
+             document.querySelector('.speed-value').innerText = "0";
+             document.getElementById('accStat').innerText = "---";
+        }
+
+        // تابع دکمه بازگشت به مرکز
+        function reCenterMap() {
+            if(userMarker) {
+                map.flyTo(userMarker.getLatLng(), 18);
+                isFirstFix = true; // دوباره حالت فالو کردن فعال شود
+            } else {
+                alert("هنوز موقعیتی دریافت نشده است.");
             }
         }
     </script>

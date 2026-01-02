@@ -3,100 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>پنل راننده - دیزاین مدرن</title>
+    <title>پنل راننده - سرویس دانشگاه</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
+        /* تنظیمات رنگ و طراحی */
         :root {
-            --primary: #2c3e50;      /* سرمه‌ای تیره */
-            --accent: #3498db;       /* آبی روشن */
-            --bg-card: #ffffff;      /* سفید */
-            --text-main: #2c3e50;
-            --text-sub: #95a5a6;
-            --shadow: 0 10px 30px rgba(0,0,0,0.15);
+            --primary: #2c3e50;       /* سرمه‌ای تیره */
+            --bg-card: #ffffff;       /* پس‌زمینه کارت‌ها */
+            --shadow: 0 10px 30px rgba(0,0,0,0.15); /* سایه نرم */
         }
 
         body, html { 
             margin: 0; padding: 0; height: 100%; 
             font-family: 'Vazirmatn', sans-serif; 
-            background: #ecf0f1; 
-            overflow: hidden; 
+            background: #eee; 
+            overflow: hidden; /* جلوگیری از اسکرول */
         }
 
         /* نقشه تمام صفحه */
-        #map { 
-            width: 100%; height: 100vh; 
-            z-index: 1; 
-        }
+        #map { width: 100%; height: 100vh; z-index: 1; background: #e5e5e5; }
 
         /* نوار وضعیت بالا */
         .top-bar {
             position: fixed; top: 0; left: 0; right: 0;
-            background: linear-gradient(to left, var(--primary), #34495e);
-            color: white;
-            padding: 15px 20px;
-            border-bottom-left-radius: 20px;
-            border-bottom-right-radius: 20px;
-            z-index: 1000;
-            box-shadow: var(--shadow);
+            background: linear-gradient(to left, #1e3c72, #2a5298);
+            color: white; padding: 15px 20px;
+            border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+            z-index: 1000; box-shadow: var(--shadow);
             display: flex; justify-content: space-between; align-items: center;
         }
 
         .status-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            background: rgba(255,255,255,0.2); padding: 5px 12px;
+            border-radius: 20px; font-size: 0.8rem;
             display: flex; align-items: center; gap: 8px;
         }
-
-        .status-dot {
-            width: 8px; height: 8px; background: #e74c3c; /* قرمز پیش‌فرض */
-            border-radius: 50%;
-        }
+        .status-dot { width: 8px; height: 8px; background: #ccc; border-radius: 50%; transition: 0.3s;}
 
         /* کارت اطلاعات پایین */
         .bottom-card {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: var(--bg-card);
-            padding: 25px 25px 35px 25px; /* پایین فضای بیشتر برای موبایل‌های جدید */
-            border-top-left-radius: 30px;
-            border-top-right-radius: 30px;
+            padding: 25px 25px 35px 25px; /* فضای پایین بیشتر برای گوشی‌های جدید */
+            border-top-left-radius: 30px; border-top-right-radius: 30px;
             box-shadow: 0 -5px 40px rgba(0,0,0,0.1);
             z-index: 1000;
             display: flex; justify-content: space-between; align-items: center;
-            transition: transform 0.3s ease;
         }
+        
+        .info-item h4 { margin: 0; color: #7f8c8d; font-size: 0.8rem; font-weight: normal; }
+        .info-item .val { font-size: 1.6rem; font-weight: 700; color: #2c3e50; }
+        .unit { font-size: 0.9rem; font-weight: 500; color: #95a5a6; }
 
-        .info-group h4 { margin: 0; color: var(--text-sub); font-size: 0.85rem; font-weight: 300; }
-        .info-group .value { margin: 5px 0 0; font-size: 1.6rem; font-weight: 700; color: var(--text-main); }
-        .unit { font-size: 0.9rem; font-weight: 500; color: var(--text-sub); }
-
-        /* دکمه موقعیت من (FAB) */
+        /* دکمه شناور "مکان من" */
         .fab-btn {
             position: fixed; bottom: 140px; left: 25px;
-            width: 56px; height: 56px;
-            background: var(--primary);
-            color: white;
-            border-radius: 18px; /* کمی مربعی‌تر (Modern UI) */
-            border: none;
-            box-shadow: var(--shadow);
-            font-size: 1.2rem;
+            width: 56px; height: 56px; background: #2c3e50; color: white;
+            border-radius: 18px; border: none; box-shadow: var(--shadow);
+            font-size: 1.2rem; cursor: pointer; z-index: 1000;
             display: flex; align-items: center; justify-content: center;
-            z-index: 1000;
-            cursor: pointer;
-            transition: transform 0.2s, background 0.2s;
+            transition: transform 0.2s;
         }
-        .fab-btn:active { transform: scale(0.95); background: #1a252f; }
+        .fab-btn:active { transform: scale(0.95); }
 
         /* لودینگ اولیه */
         #loader {
             position: fixed; inset: 0; background: white; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--primary);
+            color: #2c3e50;
         }
     </style>
 </head>
@@ -104,14 +82,14 @@
 
     <div id="loader">
         <i class="fa-solid fa-bus fa-3x fa-bounce"></i>
-        <p style="margin-top:20px;">در حال راه‌اندازی سامانه...</p>
+        <p style="margin-top:20px;">در حال دریافت موقعیت...</p>
     </div>
 
     <div class="top-bar">
-        <span style="font-weight: bold; font-size: 1.1rem;">سرویس دانشگاه</span>
+        <span style="font-weight: bold;">سرویس دانشگاه</span>
         <div class="status-badge">
             <div id="gps-dot" class="status-dot"></div>
-            <span id="gps-text">در حال جستجو...</span>
+            <span id="gps-text">در حال اتصال...</span>
         </div>
     </div>
 
@@ -122,68 +100,71 @@
     </button>
 
     <div class="bottom-card">
-        <div class="info-group">
+        <div class="info-item">
             <h4>سرعت لحظه‌ای</h4>
-            <div class="value"><span id="speed">0</span> <span class="unit">km/h</span></div>
+            <div class="val"><span id="speed">0</span> <span class="unit">km/h</span></div>
         </div>
-        
-        <div style="width: 1px; height: 40px; background: #eee;"></div>
-
-        <div class="info-group" style="text-align: left;">
-            <h4>وضعیت GPS</h4>
-            <div class="value" style="font-size: 1.2rem; margin-top: 10px;" id="accuracy">---</div>
+        <div style="width:1px; height:40px; background:#eee;"></div>
+        <div class="info-item" style="text-align: left;">
+            <h4>دقت GPS</h4>
+            <div class="val" id="accuracy" style="font-size: 1.1rem; margin-top: 8px;">---</div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // ۱. ساخت نقشه (بدون کنترل‌های زوم اضافه)
-        const map = L.map('map', {
-            zoomControl: false, // حذف دکمه‌های +/- برای زیبایی
-            attributionControl: false // حذف نوشته‌های پایین نقشه برای تمیزی
-        }).setView([35.6997, 51.3380], 13);
+        // کلید شما در اینجا قرار گرفت
+        const NESHAN_KEY = "service.cf36cbac4f684409a55a601a36dd86ad";
 
-        // لایه نقشه ویکی‌مدیا (تمیز و بدون فیلتر)
-        L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png', {
-            minZoom: 5,
-            maxZoom: 19
+        // ۱. راه‌اندازی نقشه
+        const map = L.map('map', {
+            zoomControl: false, // حذف دکمه‌های زوم برای زیبایی
+            attributionControl: false // حذف نوشته‌های پایین نقشه
+        }).setView([35.6997, 51.3380], 14);
+
+        // ۲. اضافه کردن لایه نقشه نشان (استایل Dreamy/روشن)
+        L.tileLayer(`https://api.neshan.org/v2/simple/{z}/{x}/{y}.png?type=dreamy&service_key=${NESHAN_KEY}`, {
+            maxZoom: 18
         }).addTo(map);
 
-        // ۲. آیکون اتوبوس (سایز بزرگتر و واضح‌تر)
+        // ۳. آیکون اتوبوس
         const busIcon = L.icon({
             iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png',
-            iconSize: [55, 55],
-            iconAnchor: [27, 55], // نوک پایین آیکون روی مکان باشد
+            iconSize: [55, 55], // سایز بزرگ و خوانا
+            iconAnchor: [27, 55] // تنظیم نوک آیکون روی مختصات
         });
 
         let marker = null;
         let isFirstLoad = true;
 
-        // ۳. شروع GPS
-        if('geolocation' in navigator) {
+        // ۴. دریافت موقعیت GPS
+        if(navigator.geolocation) {
             navigator.geolocation.watchPosition(success, error, {
-                enableHighAccuracy: true,
-                timeout: 10000,
+                enableHighAccuracy: true, // درخواست بالاترین دقت
+                timeout: 15000,
                 maximumAge: 0
             });
         } else {
-            alert('مرورگر قدیمی است.');
+            alert("مرورگر شما از GPS پشتیبانی نمی‌کند.");
+            document.getElementById('loader').style.display = 'none';
         }
 
+        // وقتی موقعیت پیدا شد
         function success(pos) {
-            // حذف لودینگ در اولین دریافت سیگنال
+            // مخفی کردن لودینگ
             document.getElementById('loader').style.display = 'none';
 
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            const speedVal = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(0) : 0;
-            const accVal = Math.round(pos.coords.accuracy);
+            // سرعت به کیلومتر بر ساعت (اگر صفر بود 0 نشان بده)
+            const spd = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(0) : 0;
+            const acc = Math.round(pos.coords.accuracy);
 
-            // بروزرسانی UI
-            updateUI(true, speedVal, accVal);
+            // بروزرسانی ظاهر برنامه
+            updateUI(true, spd, acc);
 
-            // بروزرسانی مارکر (بدون هیچ دایره و پالس اضافه)
+            // حرکت دادن مارکر
             if (!marker) {
                 marker = L.marker([lat, lng], {icon: busIcon}).addTo(map);
             } else {
@@ -197,36 +178,42 @@
             }
         }
 
+        // وقتی خطایی رخ داد
         function error(err) {
-            document.getElementById('loader').style.display = 'none'; // حتی اگر ارور داد لودینگ برود
+            document.getElementById('loader').style.display = 'none';
             updateUI(false);
             console.error(err);
+            
+            // نمایش پیام خطا اگر HTTPS نباشد
+            if(window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                 alert("نکته مهم: برای کار کردن GPS باید حتما فایل را روی هاست HTTPS اجرا کنید (یا لوکال هاست).");
+            }
         }
 
-        // تابع مدیریت ظاهر (رنگ چراغ‌ها و متن‌ها)
-        function updateUI(isConnected, speed = 0, accuracy = 0) {
+        // تابع مدیریت رنگ‌ها و متن‌ها
+        function updateUI(connected, speed, acc) {
             const dot = document.getElementById('gps-dot');
-            const text = document.getElementById('gps-text');
-            const speedEl = document.getElementById('speed');
+            const txt = document.getElementById('gps-text');
+            const spdEl = document.getElementById('speed');
             const accEl = document.getElementById('accuracy');
 
-            if (isConnected) {
+            if(connected) {
                 dot.style.background = '#2ecc71'; // سبز
-                dot.style.boxShadow = '0 0 10px #2ecc71'; // درخشش ریز ثابت
-                text.innerText = "آنلاین";
-                speedEl.innerText = speed;
-                accEl.innerText = "دقیق (" + accuracy + "m)";
+                dot.style.boxShadow = '0 0 8px #2ecc71';
+                txt.innerText = "آنلاین";
+                spdEl.innerText = speed;
+                accEl.innerText = acc + " متر";
                 accEl.style.color = "#27ae60";
             } else {
                 dot.style.background = '#e74c3c'; // قرمز
                 dot.style.boxShadow = 'none';
-                text.innerText = "قطع ارتباط";
+                txt.innerText = "قطع ارتباط";
                 accEl.innerText = "عدم سیگنال";
                 accEl.style.color = "#e74c3c";
             }
         }
 
-        // دکمه بازگشت به مرکز
+        // تابع دکمه بازگشت به مرکز
         function centerMap() {
             if(marker) {
                 map.flyTo(marker.getLatLng(), 18, {
@@ -234,7 +221,7 @@
                     duration: 1
                 });
             } else {
-                alert("هنوز موقعیت شما پیدا نشده است.");
+                alert("موقعیت شما هنوز یافت نشده است. لطفا صبر کنید یا Location گوشی را چک کنید.");
             }
         }
     </script>
